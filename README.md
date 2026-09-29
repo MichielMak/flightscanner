@@ -121,6 +121,26 @@ Optional: run the same hooks as CI (gitleaks, actionlint, YAML/JSON checks) befo
 | `DEMO_MODE`            | `false`  | Fake prices, also on automatically when no keys are set |
 | `PORT`                 | `8080`   | HTTP port                                               |
 | `DATA_DIR`             | `./data` | Where the usage counter is stored                       |
+| `LOG_LEVEL`            | `info`   | `debug`, `info`, `warn`, `error` or `silent`            |
+
+## Monitoring
+
+`GET /api/health` returns `{"status":"ok",...}` without calling any price provider. The Docker health check uses it.
+
+Logs are one JSON object per line (`warn` and `error` on stderr). Every API response has an `X-Request-Id` header that matches the `requestId` in the log. Health checks and result polling are not logged.
+
+Events worth an alert:
+
+| Event                  | Level | Means                                                              |
+| ---------------------- | ----- | ------------------------------------------------------------------ |
+| `ignav.free_tier`      | warn  | 800 and 1,000 billed Ignav requests reached (logged once each)     |
+| `provider.fatal`       | error | Bad API key or billing problem; the search stopped using it        |
+| `http.unhandled_error` | error | A bug: the request got a 500                                       |
+| `search.finished`      | info  | Per search: `status`, `durationMs`, cached and live request counts |
+
+```sh
+docker logs flightscanner 2>&1 | jq -c 'select(.level == "error" or .event == "ignav.free_tier")'
+```
 
 ## Project layout
 
