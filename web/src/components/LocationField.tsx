@@ -103,8 +103,8 @@ export function LocationField({ label, placeholder, value, airports, onChange }:
   const selectedCount = airports.filter((a) => isSelected(a, value.overrides)).length;
 
   return (
-    <div className="flex flex-col gap-2">
-      <label className="text-sm font-medium text-ink-2" htmlFor={`${listId}-input`}>
+    <div className="flex flex-col gap-2" role="group" aria-labelledby={`${listId}-label`}>
+      <label id={`${listId}-label`} className="text-sm font-medium text-ink-2" htmlFor={`${listId}-input`}>
         {label}
       </label>
 
