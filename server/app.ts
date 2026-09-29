@@ -84,6 +84,7 @@ export function createApp(engine: SearchEngine, usage: UsageCounter) {
 
   app.get('/config', (c) =>
     c.json({
+      version: config.version,
       demo: config.demo,
       providers: engine.providers,
       defaultLiveBudget: config.defaultLiveBudget,
