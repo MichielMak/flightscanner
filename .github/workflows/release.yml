@@ -1,0 +1,121 @@
+name: Release
+
+# Every push to main does one of two things:
+# 1. package.json has a version without a tag (a release PR was just merged):
+#    tag vX.Y.Z, push image ghcr.io/<owner>/flightscanner:X.Y.Z and create a GitHub release.
+# 2. There are unreleased feat/fix/perf/refactor/deps commits:
+#    open or update the "chore(release): vX.Y.Z" PR with the new CHANGELOG.md and version.
+# Versions and the changelog come from git-cliff (cliff.toml). No `latest` tag is ever published.
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  packages: write
+  pull-requests: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+env:
+  RELEASE_BRANCH: release/next
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Check for an unpublished version
+        id: version
+        run: |
+          version=$(node -p "require('./package.json').version")
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if [ "$version" != "0.0.0" ] && ! git rev-parse -q --verify "refs/tags/v$version" > /dev/null; then
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # --- 1. Publish a merged release -------------------------------------------------
+      - name: Tag v${{ steps.version.outputs.version }}
+        if: steps.version.outputs.publish == 'true'
+        run: |
+          git tag -a "v${{ steps.version.outputs.version }}" -m "v${{ steps.version.outputs.version }}"
+          git push origin "v${{ steps.version.outputs.version }}"
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+        if: steps.version.outputs.publish == 'true'
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        if: steps.version.outputs.publish == 'true'
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
+        if: steps.version.outputs.publish == 'true'
+        id: meta
+        with:
+          images: ghcr.io/${{ github.repository }}
+          flavor: latest=false
+          tags: type=raw,value=${{ steps.version.outputs.version }}
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        if: steps.version.outputs.publish == 'true'
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Create GitHub release
+        if: steps.version.outputs.publish == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: v${{ steps.version.outputs.version }}
+        run: |
+          npx git-cliff --latest --strip all > notes.md
+          echo -e "\nImage: \`ghcr.io/${GITHUB_REPOSITORY,,}:${TAG#v}\`" >> notes.md
+          gh release create "$TAG" --title "$TAG" --notes-file notes.md
+
+      # --- 2. Open or update the release PR ----------------------------------------------
+      - name: Update release PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          changes=$(npx git-cliff --unreleased --context | jq '[.[].commits[]] | length')
+          if [ "$changes" = "0" ]; then
+            echo "Nothing to release."
+            if [ "$(gh pr view "$RELEASE_BRANCH" --json state -q .state 2>/dev/null)" = "OPEN" ]; then
+              gh pr close "$RELEASE_BRANCH" --delete-branch --comment "Nothing left to release."
+            fi
+            exit 0
+          fi
+
+          next=$(npx git-cliff --bumped-version)
+          git switch -C "$RELEASE_BRANCH"
+          npm version "${next#v}" --no-git-tag-version
+          npx git-cliff --bump --output CHANGELOG.md
+          git add CHANGELOG.md package.json package-lock.json
+          git commit -m "chore(release): $next"
+          git push --force origin "$RELEASE_BRANCH"
+
+          npx git-cliff --unreleased --bump --strip all > body.md
+          printf '\n---\nMerging this PR tags `%s` and publishes image `ghcr.io/%s:%s`.\n' \
+            "$next" "${GITHUB_REPOSITORY,,}" "${next#v}" >> body.md
+          if [ "$(gh pr view "$RELEASE_BRANCH" --json state -q .state 2>/dev/null)" = "OPEN" ]; then
+            gh pr edit "$RELEASE_BRANCH" --title "chore(release): $next" --body-file body.md
+          else
+            gh pr create --base main --head "$RELEASE_BRANCH" --title "chore(release): $next" --body-file body.md
+          fi
