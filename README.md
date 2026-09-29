@@ -80,6 +80,16 @@ npm test
 npm run build && npm start   # production build on :8080
 ```
 
+Optional: run the same hooks as CI (gitleaks, actionlint, YAML/JSON checks) before each commit with [pre-commit](https://pre-commit.com): `pre-commit install`.
+
+## Checks
+
+- **CI**: typecheck, Prettier, tests, build and Docker build.
+- **Pre-commit**: the hooks in `.pre-commit-config.yaml`.
+- **Trivy** (PRs): fails on fixable HIGH/CRITICAL issues in `package-lock.json`, the Dockerfile, committed secrets and the built image.
+- **Trivy weekly**: scans `main` and the latest released image, and opens a `security` issue when it finds something.
+- **Renovate**: runs from [docker-stacks](https://github.com/MichielMak/docker-stacks) with `renovate.json` from this repo. Non-major npm and GitHub Actions updates automerge when checks pass.
+
 ## Configuration
 
 | Variable               | Default  | What it does                                            |

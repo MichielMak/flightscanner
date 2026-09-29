@@ -1,0 +1,108 @@
+name: Trivy scheduled scan
+
+# Weekly scan of main and the latest released image, for CVEs published after merge.
+# Findings open (or update) one issue labelled `security`; a clean scan closes it.
+
+on:
+  schedule:
+    # Monday 03:45 UTC, offset from the docker-stacks scan at 03:15.
+    - cron: '45 3 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  TRIVY_SEVERITY: HIGH,CRITICAL
+  TRIVY_IGNORE_UNFIXED: 'true'
+  TRIVY_IGNOREFILE: .trivyignore
+  ISSUE_TITLE: 'Trivy scheduled scan: vulnerabilities found'
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      packages: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: aquasecurity/setup-trivy@81e514348e19b6112ce2a7e3ecbafe19c1e1f567 # v0.3.1
+        with:
+          version: v0.74.0
+
+      - name: Scan
+        id: scan
+        env:
+          GH_TOKEN: ${{ github.token }}
+          # Registry login for the image scan, in case the GHCR package is private.
+          TRIVY_USERNAME: ${{ github.actor }}
+          TRIVY_PASSWORD: ${{ github.token }}
+        run: |
+          found=false
+          : > findings.md
+
+          # Appends a section to findings.md when a scan reports something.
+          # Findings exit with 2 because Trivy itself exits with 1 on errors, which must fail the run.
+          scan() {
+            local title=$1; shift
+            set +e
+            "$@" --exit-code 2 --output report.txt
+            local code=$?
+            set -e
+            cat report.txt
+            if [ "$code" -eq 2 ]; then
+              found=true
+              { echo "### $title"; echo '```'; head -c 25000 report.txt; echo '```'; echo; } >> findings.md
+            elif [ "$code" -ne 0 ]; then
+              echo "::error::Scan failed: $title"
+              exit "$code"
+            fi
+          }
+
+          scan 'Repo (main)' trivy fs . --scanners vuln,secret,misconfig
+
+          # GitHub only lists published releases, so this is the image that can be deployed.
+          tag=$(gh release view --json tagName -q .tagName 2>/dev/null || true)
+          if [ -n "$tag" ]; then
+            image="ghcr.io/${GITHUB_REPOSITORY,,}:${tag#v}"
+            scan "Image \`$image\`" trivy image "$image" --no-progress
+          else
+            echo "No release yet, skipping image scan."
+          fi
+
+          echo "found=$found" >> "$GITHUB_OUTPUT"
+
+      - name: Open or update issue
+        if: steps.scan.outputs.found == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          run_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          {
+            echo "The weekly Trivy scan found fixable HIGH/CRITICAL findings. Update the dependency or base image, then cut a release."
+            echo
+            echo "_Last scan: $(date -u '+%Y-%m-%d %H:%M UTC'), [run logs]($run_url)_"
+            echo
+            cat findings.md
+          } > body.md
+
+          gh label create security --color d73a4a --description "Security vulnerability or advisory" 2>/dev/null || true
+          existing=$(gh issue list --state open --label security --json number,title \
+            --jq ".[] | select(.title == \"$ISSUE_TITLE\") | .number" | head -n1)
+          if [ -n "$existing" ]; then
+            gh issue edit "$existing" --body-file body.md
+          else
+            gh issue create --title "$ISSUE_TITLE" --label security --body-file body.md
+          fi
+
+      - name: Close issue if clean
+        if: steps.scan.outputs.found == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          existing=$(gh issue list --state open --label security --json number,title \
+            --jq ".[] | select(.title == \"$ISSUE_TITLE\") | .number" | head -n1)
+          if [ -n "$existing" ]; then
+            gh issue close "$existing" --comment "Scan on $(date -u '+%Y-%m-%d %H:%M UTC') is clean. Closing."
+          fi

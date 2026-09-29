@@ -1,0 +1,66 @@
+name: Trivy
+
+# Blocks PRs that add fixable HIGH/CRITICAL findings. Reports land in the job summary.
+# trivy-scheduled.yml covers CVEs published after merge.
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  TRIVY_SEVERITY: HIGH,CRITICAL
+  TRIVY_IGNORE_UNFIXED: 'true'
+  TRIVY_IGNOREFILE: .trivyignore
+
+jobs:
+  # npm dependencies (package-lock.json), committed secrets and Dockerfile misconfigurations.
+  repo:
+    name: Repo scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: aquasecurity/setup-trivy@81e514348e19b6112ce2a7e3ecbafe19c1e1f567 # v0.3.1
+        with:
+          version: v0.74.0
+      - name: Scan repo
+        run: |
+          set +e
+          trivy fs . --scanners vuln,secret,misconfig --exit-code 1 --output report.txt
+          code=$?
+          set -e
+          cat report.txt
+          if [ "$code" -ne 0 ]; then
+            { echo '## Trivy repo scan: fixable HIGH/CRITICAL findings'; echo '```'; cat report.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          fi
+          exit "$code"
+
+  # The image as it would be published: base OS packages plus production node_modules.
+  image:
+    name: Image scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          load: true
+          tags: flightscanner:scan
+          cache-from: type=gha
+      - uses: aquasecurity/setup-trivy@81e514348e19b6112ce2a7e3ecbafe19c1e1f567 # v0.3.1
+        with:
+          version: v0.74.0
+      - name: Scan image
+        run: |
+          set +e
+          trivy image flightscanner:scan --no-progress --exit-code 1 --output report.txt
+          code=$?
+          set -e
+          cat report.txt
+          if [ "$code" -ne 0 ]; then
+            { echo '## Trivy image scan: fixable HIGH/CRITICAL vulnerabilities'; echo '```'; cat report.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          fi
+          exit "$code"
