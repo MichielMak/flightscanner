@@ -70,9 +70,12 @@ export function selectForLive(opts: {
   }
 
   if (byPrice.length === 0) {
-    const perRoute = Math.max(1, Math.floor(budget / routes.length));
+    const perRoute = Math.floor(budget / routes.length);
+    const remainder = budget % routes.length;
     return routes
-      .flatMap(([o, d]) => spreadPairs(pairs, targetDays, perRoute).map((p) => toTarget(o, d, p)))
+      .flatMap(([o, d], i) =>
+        spreadPairs(pairs, targetDays, perRoute + (i < remainder ? 1 : 0)).map((p) => toTarget(o, d, p)),
+      )
       .slice(0, budget);
   }
 
