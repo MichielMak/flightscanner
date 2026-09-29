@@ -1,0 +1,60 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended", ":enableVulnerabilityAlerts", ":semanticCommits"],
+  "timezone": "Europe/Amsterdam",
+  "labels": ["renovate"],
+  "reviewers": ["MichielMak"],
+  "dependencyDashboardTitle": "Renovate Dependency Dashboard",
+  "enabledManagers": ["npm", "dockerfile", "github-actions"],
+  "prConcurrentLimit": 10,
+  "prHourlyLimit": 6,
+  "rebaseWhen": "behind-base-branch",
+  "osvVulnerabilityAlerts": true,
+  "vulnerabilityAlerts": {
+    "addLabels": ["security"],
+    "schedule": ["at any time"],
+    "minimumReleaseAge": "0 hours"
+  },
+  "packageRules": [
+    {
+      "description": "Wait before adopting new npm releases, so compromised or yanked versions are caught first",
+      "matchDatasources": ["npm"],
+      "minimumReleaseAge": "3 days"
+    },
+    {
+      "description": "Group non-major npm updates into one PR and automerge it when CI passes",
+      "matchManagers": ["npm"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "npm non-major",
+      "groupSlug": "npm-non-major",
+      "automerge": true
+    },
+    {
+      "description": "Stay on the Node 22 LTS line; a Node major is a deliberate upgrade (also update engines and esbuild --target)",
+      "matchPackageNames": ["node", "@types/node"],
+      "matchUpdateTypes": ["major"],
+      "enabled": false
+    },
+    {
+      "description": "Pin the Dockerfile base image to a digest",
+      "matchManagers": ["dockerfile"],
+      "pinDigests": true
+    },
+    {
+      "description": "GitHub Actions don't change the app: use ci(deps) so git-cliff skips them for releases",
+      "matchManagers": ["github-actions"],
+      "groupName": "github-actions",
+      "groupSlug": "github-actions",
+      "semanticCommitType": "ci",
+      "addLabels": ["github-actions"],
+      "automerge": true
+    },
+    {
+      "description": "The setup-trivy 'version' input takes a plain tag, so it must not be pinned to a digest",
+      "matchManagers": ["github-actions"],
+      "matchDepTypes": ["uses-with"],
+      "matchPackageNames": ["aquasecurity/trivy"],
+      "pinDigests": false
+    }
+  ]
+}
