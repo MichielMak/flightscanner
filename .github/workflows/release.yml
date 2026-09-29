@@ -94,7 +94,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          changes=$(npx git-cliff --unreleased --context | jq '[.[].commits[]] | length')
+          changes=$(npx git-cliff --unreleased --context | node -p "JSON.parse(require('fs').readFileSync(0)).flatMap((r) => r.commits).length")
           if [ "$changes" = "0" ]; then
             echo "Nothing to release."
             if [ "$(gh pr view "$RELEASE_BRANCH" --json state -q .state 2>/dev/null)" = "OPEN" ]; then
