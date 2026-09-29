@@ -182,6 +182,18 @@ describe('SearchEngine', () => {
     expect(job.results.top.every((q) => q.source === 'live')).toBe(true);
   });
 
+  it('uses the full live budget when the cached scan finds nothing', async () => {
+    const cached: CachedPriceProvider = {
+      name: 'travelpayouts',
+      fetchMonth: async () => [],
+    };
+    const engine = new SearchEngine(cached, new DemoLiveProvider());
+    const job = await waitForDone(engine, engine.start({ ...request, liveBudget: 5 }).id);
+    expect(job.status).toBe('done');
+    expect(job.cachedRequestsUsed).toBe(12);
+    expect(job.liveRequestsUsed).toBe(5);
+  });
+
   it('applies the stops filter to cached prices', async () => {
     const cached: CachedPriceProvider = {
       name: 'travelpayouts',
