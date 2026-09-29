@@ -48,16 +48,26 @@ spread evenly over the dates.
 
 ## Run on TrueNAS (Docker)
 
+Every merge to `main` publishes an image to `ghcr.io/michielmak/flightscanner:latest` (see
+`.github/workflows/ci.yml`).
+
+In the TrueNAS UI: **Apps → Discover Apps → Custom App**
+
+1. Image: `ghcr.io/michielmak/flightscanner`, tag `latest`
+2. Environment variables: `IGNAV_API_KEY` and `TRAVELPAYOUTS_TOKEN`
+3. Port: container `8080` to any free host port
+4. Storage: a host path (e.g. `/mnt/<pool>/apps/flightscanner`) mounted at `/data`. It only holds the Ignav usage
+   counter. The container runs as user `node` (uid 1000), so give that uid write access.
+
+Or build it yourself with Docker Compose:
+
 ```sh
-git clone <this repo> flightscanner && cd flightscanner
+git clone https://github.com/MichielMak/flightscanner.git && cd flightscanner
 cp .env.example .env   # add your keys
 docker compose up -d --build
 ```
 
-Open `http://<truenas-ip>:8080`. The `data` volume only holds the Ignav usage counter.
-
-In the TrueNAS UI you can also use **Apps → Discover Apps → Custom App** with the image built from this Dockerfile,
-port 8080, the two environment variables, and a host path mounted at `/data`.
+Then open `http://<truenas-ip>:8080`.
 
 ## Run locally
 
