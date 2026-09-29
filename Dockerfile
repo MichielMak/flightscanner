@@ -18,5 +18,5 @@ COPY --from=build /app/dist ./dist
 USER node
 EXPOSE 8080
 VOLUME /data
-HEALTHCHECK --interval=1m --timeout=5s CMD wget -qO- http://localhost:8080/api/config > /dev/null || exit 1
+HEALTHCHECK --interval=1m --timeout=5s CMD wget -qO- http://localhost:8080/api/health > /dev/null || exit 1
 CMD ["node", "dist/server/index.js"]

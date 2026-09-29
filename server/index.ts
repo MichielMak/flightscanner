@@ -6,6 +6,7 @@ import { config } from './config';
 import { DemoCachedProvider, DemoLiveProvider } from './providers/demo';
 import { IgnavProvider } from './providers/ignav';
 import { TravelpayoutsProvider } from './providers/travelpayouts';
+import { log } from './log';
 import { SearchEngine } from './search';
 import { UsageCounter } from './usage';
 
@@ -30,7 +31,14 @@ app.get('*', serveStatic({ root: webRoot, path: 'index.html' }));
 
 serve({ fetch: app.fetch, port: config.port }, ({ port }) => {
   const { cached, live } = engine.providers;
-  console.log(`Flightscanner on http://localhost:${port} (cached prices: ${cached}, live prices: ${live})`);
+  log.info('server.started', {
+    url: `http://localhost:${port}`,
+    version: config.version,
+    cachedProvider: cached,
+    liveProvider: live,
+    demo: config.demo,
+    ignavRequestsUsed: usage.ignavRequests,
+  });
   if (config.demo)
-    console.log('DEMO MODE: prices are fake. Set IGNAV_API_KEY and TRAVELPAYOUTS_TOKEN for real prices.');
+    log.warn('server.demo_mode', { message: 'Prices are fake. Set IGNAV_API_KEY and TRAVELPAYOUTS_TOKEN.' });
 });

@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type { ProviderInfo, Quote, SearchJob, SearchRequest, SearchResults } from '../shared/types';
 import { airportByCode } from './airports';
 import { mapWithConcurrency } from './cache';
+import { log } from './log';
 import { daysBetween, generatePairs, monthsOf, pairKey, type DatePair } from '../shared/dates';
 import { ProviderError, type CachedPrice, type CachedPriceProvider, type LivePriceProvider } from './providers/types';
 
@@ -164,11 +165,34 @@ export class SearchEngine {
       quotes: new Map(),
     };
     this.jobs.set(state.job.id, state);
-    this.run(state).catch((e: unknown) => {
-      state.job.status = 'error';
-      state.job.error = e instanceof Error ? e.message : String(e);
-      state.job.finishedAt = new Date().toISOString();
+    const searchId = state.job.id;
+    const started = performance.now();
+    log.info('search.started', {
+      searchId,
+      origins: request.origins.length,
+      destinations: request.destinations.length,
+      dateMode: request.dates.mode,
+      liveBudget: request.liveBudget,
     });
+    this.run(state)
+      .catch((e: unknown) => {
+        state.job.status = 'error';
+        state.job.error = e instanceof Error ? e.message : String(e);
+        state.job.finishedAt = new Date().toISOString();
+      })
+      .then(() => {
+        const { job } = state;
+        (job.status === 'error' ? log.warn : log.info)('search.finished', {
+          searchId,
+          status: job.status,
+          durationMs: Math.round(performance.now() - started),
+          cachedRequests: job.cachedRequestsUsed,
+          liveRequests: job.liveRequestsUsed,
+          quotes: state.quotes.size,
+          warnings: job.warnings.length,
+          ...(job.error && { error: job.error }),
+        });
+      });
     return this.snapshot(state);
   }
 
@@ -297,7 +321,15 @@ export class SearchEngine {
         } catch (e) {
           failures++;
           lastError = e instanceof Error ? e.message : String(e);
-          if (e instanceof ProviderError && e.fatal) fatal = true;
+          if (e instanceof ProviderError && e.fatal && !fatal) {
+            fatal = true;
+            log.error('provider.fatal', {
+              searchId: job.id,
+              provider: this.cached!.name,
+              status: e.status,
+              error: lastError,
+            });
+          }
         } finally {
           job.progress.done++;
         }
@@ -338,6 +370,14 @@ export class SearchEngine {
           failures++;
           lastError = e instanceof Error ? e.message : String(e);
           if (e instanceof ProviderError && e.fatal) {
+            if (!stopped) {
+              log.error('provider.fatal', {
+                searchId: job.id,
+                provider: this.live!.name,
+                status: e.status,
+                error: lastError,
+              });
+            }
             stopped = true;
             job.warnings.push(`Live checks stopped: ${lastError}`);
           }

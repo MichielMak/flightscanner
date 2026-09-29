@@ -1,9 +1,12 @@
 import { Hono } from 'hono';
+import { requestId, type RequestIdVariables } from 'hono/request-id';
+import { routePath } from 'hono/route';
 import { z } from 'zod';
 import type { LocationSuggestions } from '../shared/types';
 import { resolveLocations, searchAirports, searchCountries } from './airports';
 import { config } from './config';
 import { geocode } from './geocode';
+import { errorFields, log } from './log';
 import { ProviderError } from './providers/types';
 import type { SearchEngine } from './search';
 import type { UsageCounter } from './usage';
@@ -68,7 +71,27 @@ function addDaysSafe(iso: string, n: number): string {
 const checkRequest = z.object({ origin: iata, destination: iata, dep: isoDate, ret: isoDate });
 
 export function createApp(engine: SearchEngine, usage: UsageCounter) {
-  const app = new Hono().basePath('/api');
+  const app = new Hono<{ Variables: RequestIdVariables }>().basePath('/api');
+
+  // Sets X-Request-Id (or keeps the caller's) so a browser error can be matched to its log line.
+  app.use(requestId());
+  app.use(async (c, next) => {
+    const start = performance.now();
+    await next();
+    // After next() this is the route whose handler answered, not a catch-all registered later.
+    const route = routePath(c);
+    // The health check and the result polling (every 800 ms per search) would drown everything else.
+    if (route === '/api/health' || (route === '/api/search/:id' && c.res.status < 400)) return;
+    const fields = {
+      requestId: c.get('requestId'),
+      method: c.req.method,
+      route,
+      status: c.res.status,
+      durationMs: Math.round(performance.now() - start),
+    };
+    if (c.res.status >= 500) log.error('http.request', fields);
+    else log.info('http.request', fields);
+  });
 
   app.onError((err, c) => {
     if (err instanceof z.ZodError) {
@@ -76,11 +99,17 @@ export function createApp(engine: SearchEngine, usage: UsageCounter) {
     }
     if (err instanceof ProviderError) {
       const status = err.status && err.status >= 400 && err.status < 600 ? err.status : 502;
+      log.warn('provider.error', { requestId: c.get('requestId'), status, fatal: err.fatal, error: err.message });
       return c.json({ error: err.message }, status as 400);
     }
-    console.error(err);
+    log.error('http.unhandled_error', { requestId: c.get('requestId'), ...errorFields(err) });
     return c.json({ error: 'Internal error' }, 500);
   });
+
+  // Liveness only: no calls to price providers, so it is cheap enough for a Docker health check.
+  app.get('/health', (c) =>
+    c.json({ status: 'ok', version: config.version, uptimeSeconds: Math.round(process.uptime()) }),
+  );
 
   app.get('/config', (c) =>
     c.json({
@@ -101,7 +130,7 @@ export function createApp(engine: SearchEngine, usage: UsageCounter) {
     // Skip the (slow, rate limited) geocoder when the query is clearly an airport code.
     if (q.trim().length >= 3 && !(q.trim().length === 3 && airports[0]?.code === q.trim().toUpperCase())) {
       places = await geocode(q).catch((e: unknown) => {
-        console.warn('Geocoding failed:', e);
+        log.warn('geocode.failed', { requestId: c.get('requestId'), ...errorFields(e) });
         return [];
       });
     }

@@ -166,7 +166,6 @@ describe('POST /api/booking-links', () => {
   });
 
   it('hides unexpected errors behind a generic 500', async () => {
-    vi.spyOn(console, 'error').mockImplementation(() => {});
     const res = await post(setup(failingLive(new Error('secret stack detail'))), '/api/booking-links', {
       itineraryId: 'x',
     });
