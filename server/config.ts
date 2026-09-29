@@ -1,9 +1,13 @@
+import pkg from '../package.json' with { type: 'json' };
+
 const env = (name: string) => process.env[name]?.trim() || null;
 
 const ignavKey = env('IGNAV_API_KEY');
 const travelpayoutsToken = env('TRAVELPAYOUTS_TOKEN');
 
 export const config = {
+  /** Set by the release PR; 0.0.0 means an unreleased development build. */
+  version: pkg.version,
   port: Number(env('PORT') ?? 8080),
   ignavKey,
   ignavMarket: env('IGNAV_MARKET') ?? 'NL',

@@ -10,6 +10,7 @@ import type {
 } from '../../shared/types';
 
 export interface AppConfig {
+  version: string;
   demo: boolean;
   providers: ProviderInfo;
   defaultLiveBudget: number;
