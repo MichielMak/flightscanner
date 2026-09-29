@@ -29,7 +29,7 @@ filter_unconventional = true
 # Commits that end up in the changelog are the ones that trigger a release.
 commit_parsers = [
   { message = "^chore\\(release\\)", skip = true },
-  { message = "^(chore|build|fix)\\(deps", group = "<!-- 4 -->Dependencies" },
+  { message = "^(chore|build|ci|fix)\\(deps", group = "<!-- 4 -->Dependencies" },
   { message = "^feat", group = "<!-- 0 -->Features" },
   { message = "^fix", group = "<!-- 1 -->Bug fixes" },
   { message = "^perf", group = "<!-- 2 -->Performance" },
