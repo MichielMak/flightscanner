@@ -26,6 +26,10 @@ trim = true
 [git]
 conventional_commits = true
 filter_unconventional = true
+# Squash merges end the title with "(#123)": turn that into a link to the PR.
+commit_preprocessors = [
+  { pattern = '\(#([0-9]+)\)', replace = "([#${1}](https://github.com/MichielMak/flightscanner/pull/${1}))" },
+]
 # Commits that end up in the changelog are the ones that trigger a release.
 commit_parsers = [
   { message = "^chore\\(release\\)", skip = true },
