@@ -65,7 +65,8 @@ export function App() {
         <h1 className="text-xl font-semibold">✈ Flightscanner</h1>
         {config && (
           <span className="text-xs text-muted">
-            Cached prices: {config.providers.cached} · Live prices: {config.providers.live}
+            Cached prices: {config.providers.cached} · Live prices: {config.providers.live} ·{' '}
+            {config.version === '0.0.0' ? 'dev build' : `v${config.version}`}
           </span>
         )}
       </header>
