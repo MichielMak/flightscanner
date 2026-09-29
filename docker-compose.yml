@@ -1,0 +1,13 @@
+services:
+  flightscanner:
+    build: .
+    image: flightscanner:latest
+    container_name: flightscanner
+    restart: unless-stopped
+    ports:
+      - '8080:8080'
+    env_file: .env
+    volumes:
+      # Keeps the live-check counter across restarts. On TrueNAS, point this at a dataset,
+      # e.g. /mnt/<pool>/apps/flightscanner:/data
+      - ./data:/data
