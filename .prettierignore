@@ -4,3 +4,4 @@ server/data
 CHANGELOG.md
 playwright-report
 test-results
+coverage

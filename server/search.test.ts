@@ -83,6 +83,18 @@ describe('selectForLive', () => {
     expect(targets).toHaveLength(9);
     for (const [o] of routes) expect(targets.filter((t) => t.origin === o)).toHaveLength(3);
   });
+
+  it('uses the full budget when it does not divide evenly over routes', () => {
+    const targets = selectForLive({ routes, pairs, cached: [], budget: 5, targetDays: 12 });
+    expect(targets).toHaveLength(5);
+    expect(routes.map(([o]) => targets.filter((t) => t.origin === o).length)).toEqual([2, 2, 1]);
+  });
+
+  it('prioritizes the first routes when the budget is smaller than the route count', () => {
+    const targets = selectForLive({ routes, pairs, cached: [], budget: 2, targetDays: 12 });
+    expect(targets).toHaveLength(2);
+    expect(targets.map((t) => t.origin)).toEqual(['AMS', 'BRU']);
+  });
 });
 
 describe('summarize', () => {
@@ -168,6 +180,18 @@ describe('SearchEngine', () => {
     expect(job.status).toBe('done');
     expect(job.liveRequestsUsed).toBe(12);
     expect(job.results.top.every((q) => q.source === 'live')).toBe(true);
+  });
+
+  it('uses the full live budget when the cached scan finds nothing', async () => {
+    const cached: CachedPriceProvider = {
+      name: 'travelpayouts',
+      fetchMonth: async () => [],
+    };
+    const engine = new SearchEngine(cached, new DemoLiveProvider());
+    const job = await waitForDone(engine, engine.start({ ...request, liveBudget: 5 }).id);
+    expect(job.status).toBe('done');
+    expect(job.cachedRequestsUsed).toBe(12);
+    expect(job.liveRequestsUsed).toBe(5);
   });
 
   it('applies the stops filter to cached prices', async () => {
