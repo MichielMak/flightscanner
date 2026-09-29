@@ -83,6 +83,18 @@ describe('selectForLive', () => {
     expect(targets).toHaveLength(9);
     for (const [o] of routes) expect(targets.filter((t) => t.origin === o)).toHaveLength(3);
   });
+
+  it('uses the full budget when it does not divide evenly over routes', () => {
+    const targets = selectForLive({ routes, pairs, cached: [], budget: 5, targetDays: 12 });
+    expect(targets).toHaveLength(5);
+    expect(routes.map(([o]) => targets.filter((t) => t.origin === o).length)).toEqual([2, 2, 1]);
+  });
+
+  it('prioritizes the first routes when the budget is smaller than the route count', () => {
+    const targets = selectForLive({ routes, pairs, cached: [], budget: 2, targetDays: 12 });
+    expect(targets).toHaveLength(2);
+    expect(targets.map((t) => t.origin)).toEqual(['AMS', 'BRU']);
+  });
 });
 
 describe('summarize', () => {
