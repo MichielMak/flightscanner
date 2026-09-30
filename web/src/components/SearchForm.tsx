@@ -13,7 +13,8 @@ interface FormState {
   liveBudget: number;
 }
 
-const STORAGE_KEY = 'flightscanner.form.v1';
+const STORAGE_KEY = 'flightscanner.form.v2';
+const LEGACY_STORAGE_KEY = 'flightscanner.form.v1';
 
 function defaultState(liveBudget: number): FormState {
   return {
@@ -23,14 +24,20 @@ function defaultState(liveBudget: number): FormState {
     },
     to: { specs: [{ kind: 'country', code: 'CO', label: 'Colombia' }], overrides: {} },
     dates: defaultFlexible(),
-    filters: { adults: 1, maxStops: null, minCheckedBags: 0, allowSelfTransfer: false },
+    filters: { adults: 1, maxStops: null, minCheckedBags: 0, allowSelfTransfer: true },
     liveBudget,
   };
 }
 
 function loadState(liveBudget: number): FormState {
   try {
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? 'null') as FormState | null;
+    let saved = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? 'null') as FormState | null;
+    if (!saved) {
+      // v1 defaulted to no self-transfer, which hides every fare from small regional airports.
+      const legacy = JSON.parse(localStorage.getItem(LEGACY_STORAGE_KEY) ?? 'null') as FormState | null;
+      if (legacy?.filters) saved = { ...legacy, filters: { ...legacy.filters, allowSelfTransfer: true } };
+      localStorage.removeItem(LEGACY_STORAGE_KEY);
+    }
     if (saved?.from && saved.to && saved.dates && saved.filters) {
       // Don't bring back a period that is already over.
       const today = new Date().toISOString().slice(0, 10);
