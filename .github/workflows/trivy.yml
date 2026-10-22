@@ -16,9 +16,12 @@ env:
   TRIVY_IGNOREFILE: .trivyignore
 
 jobs:
+  # Skip PRs from forks; they get no CI here. Push and manual runs are unaffected.
+
   # npm dependencies (package-lock.json), committed secrets and Dockerfile misconfigurations.
   repo:
     name: Repo scan
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -40,6 +43,7 @@ jobs:
   # The image as it would be published: base OS packages plus production node_modules.
   image:
     name: Image scan
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
