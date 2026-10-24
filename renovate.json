@@ -36,6 +36,13 @@
       "enabled": false
     },
     {
+      "description": "Hold npm majors: npm 12 fails --package-lock-only on Tailwind 4 (https://github.com/npm/cli/issues/9800); re-enable once fixed",
+      "matchDepTypes": ["packageManager"],
+      "matchPackageNames": ["npm"],
+      "matchUpdateTypes": ["major"],
+      "enabled": false
+    },
+    {
       "description": "Pin the Dockerfile base image to a digest",
       "matchManagers": ["dockerfile"],
       "pinDigests": true
