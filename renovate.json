@@ -33,6 +33,11 @@
       "groupSlug": "npm-non-major"
     },
     {
+      "description": "Major updates can break things CI misses: open the PR, but merge by hand",
+      "matchUpdateTypes": ["major"],
+      "automerge": false
+    },
+    {
       "description": "Stay on the Node 22 LTS line; a Node major is a deliberate upgrade (also update engines and esbuild --target)",
       "matchPackageNames": ["node", "@types/node"],
       "matchUpdateTypes": ["major"],
