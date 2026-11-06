@@ -9,6 +9,10 @@
   "prConcurrentLimit": 10,
   "prHourlyLimit": 6,
   "rebaseWhen": "behind-base-branch",
+  "schedule": ["at any time"],
+  "automerge": true,
+  "automergeType": "pr",
+  "automergeSchedule": ["at any time"],
   "osvVulnerabilityAlerts": true,
   "vulnerabilityAlerts": {
     "addLabels": ["security"],
@@ -22,12 +26,11 @@
       "minimumReleaseAge": "3 days"
     },
     {
-      "description": "Group non-major npm updates into one PR and automerge it when CI passes",
+      "description": "Group non-major npm updates into one PR",
       "matchManagers": ["npm"],
       "matchUpdateTypes": ["minor", "patch"],
       "groupName": "npm non-major",
-      "groupSlug": "npm-non-major",
-      "automerge": true
+      "groupSlug": "npm-non-major"
     },
     {
       "description": "Stay on the Node 22 LTS line; a Node major is a deliberate upgrade (also update engines and esbuild --target)",
@@ -53,8 +56,7 @@
       "groupName": "github-actions",
       "groupSlug": "github-actions",
       "semanticCommitType": "ci",
-      "addLabels": ["github-actions"],
-      "automerge": true
+      "addLabels": ["github-actions"]
     },
     {
       "description": "The setup-trivy 'version' input takes a plain tag, so it must not be pinned to a digest",
