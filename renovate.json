@@ -2,7 +2,10 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["github>MichielMak/renovate-config", ":semanticCommits"],
   "dependencyDashboardTitle": "Renovate Dependency Dashboard",
-  "enabledManagers": ["npm", "dockerfile", "github-actions"],
+  "enabledManagers": ["npm", "dockerfile", "github-actions", "pre-commit"],
+  "pre-commit": {
+    "enabled": true
+  },
   "schedule": ["at any time"],
   "automerge": true,
   "automergeType": "pr",
@@ -47,6 +50,13 @@
       "description": "GitHub Actions don't change the app: use ci(deps) so git-cliff skips them for releases (grouping comes from the shared preset)",
       "matchManagers": ["github-actions"],
       "semanticCommitType": "ci"
+    },
+    {
+      "description": "Pre-commit hooks don't change the app either: use ci(deps), label them, and don't pin digests (the pre-commit manager cannot write a digest into rev:)",
+      "matchManagers": ["pre-commit"],
+      "semanticCommitType": "ci",
+      "addLabels": ["pre-commit"],
+      "pinDigests": false
     }
   ]
 }

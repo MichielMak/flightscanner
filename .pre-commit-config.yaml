@@ -26,5 +26,7 @@ repos:
     rev: 44.121.1
     hooks:
       - id: renovate-config-validator
-        args: [--strict]
+        # --no-global: check the files as repository config (with file
+        # arguments the validator otherwise treats them as global config)
+        args: [--strict, --no-global]
         files: "(^|/)renovate\\.json5?$"
