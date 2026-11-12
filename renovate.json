@@ -1,24 +1,12 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["config:recommended", ":enableVulnerabilityAlerts", ":semanticCommits"],
-  "timezone": "Europe/Amsterdam",
-  "labels": ["renovate"],
-  "reviewers": ["MichielMak"],
+  "extends": ["github>MichielMak/renovate-config", ":semanticCommits"],
   "dependencyDashboardTitle": "Renovate Dependency Dashboard",
   "enabledManagers": ["npm", "dockerfile", "github-actions"],
-  "prConcurrentLimit": 10,
-  "prHourlyLimit": 6,
-  "rebaseWhen": "behind-base-branch",
   "schedule": ["at any time"],
   "automerge": true,
   "automergeType": "pr",
   "automergeSchedule": ["at any time"],
-  "osvVulnerabilityAlerts": true,
-  "vulnerabilityAlerts": {
-    "addLabels": ["security"],
-    "schedule": ["at any time"],
-    "minimumReleaseAge": "0 hours"
-  },
   "packageRules": [
     {
       "description": "Wait before adopting new npm releases, so compromised or yanked versions are caught first",
@@ -56,19 +44,9 @@
       "pinDigests": true
     },
     {
-      "description": "GitHub Actions don't change the app: use ci(deps) so git-cliff skips them for releases",
+      "description": "GitHub Actions don't change the app: use ci(deps) so git-cliff skips them for releases (grouping comes from the shared preset)",
       "matchManagers": ["github-actions"],
-      "groupName": "github-actions",
-      "groupSlug": "github-actions",
-      "semanticCommitType": "ci",
-      "addLabels": ["github-actions"]
-    },
-    {
-      "description": "The setup-trivy 'version' input takes a plain tag, so it must not be pinned to a digest",
-      "matchManagers": ["github-actions"],
-      "matchDepTypes": ["uses-with"],
-      "matchPackageNames": ["aquasecurity/trivy"],
-      "pinDigests": false
+      "semanticCommitType": "ci"
     }
   ]
 }
