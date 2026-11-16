@@ -1,6 +1,6 @@
 {
   "name": "flightscanner",
-  "version": "0.3.4",
+  "version": "0.3.5",
   "private": true,
   "type": "module",
   "description": "Compare round-trip flight prices across nearby airports and flexible dates",
