@@ -1,7 +1,6 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["github>MichielMak/renovate-config", ":semanticCommits"],
-  "dependencyDashboardTitle": "Renovate Dependency Dashboard",
   "enabledManagers": ["npm", "dockerfile", "github-actions", "pre-commit"],
   "pre-commit": {
     "enabled": true
