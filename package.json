@@ -21,7 +21,7 @@
     "format:check": "prettier --check .",
     "changelog": "git-cliff --unreleased --bump"
   },
-  "packageManager": "npm@10.9.10",
+  "packageManager": "npm@10.9.11",
   "engines": {
     "node": ">=22"
   },
